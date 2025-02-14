@@ -1,0 +1,12 @@
+name = "enzyme_test"
+uuid = "d6868443-1d2d-4d03-b810-18265fa3c151"
+authors = ["John Bonini <bonini.physics@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+ComponentArrays = "b0b7db55-cfe3-40fc-9ded-d10e2dbeff66"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"

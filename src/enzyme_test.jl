@@ -3,7 +3,9 @@ using ComponentArrays
 using Enzyme
 using Random
 
-# acts like a sparse matrix under my_rmul! (usually add method to LineraAlgebera)
+""" For in-place right mulitplying with matrices via
+    my_rmul! or fe_my_rmul! (acts like a particular sparse matrix)
+"""
 struct Op2{T}
     i::Int
     j::Int
@@ -11,9 +13,30 @@ struct Op2{T}
     b::T
     c::T
 end
-_ckparams(C::Op2) = (C.a + C.b * im, C.a + C.c * im)
+
+""" Component Vector A holds values for many Op2
+    where the ith Op2 is Op2(k, j, A.as[i], A.bs[i], A.cs[i])
+    where k, j follow the sequence of KJIterator
+"""
+function init_A(lo)
+    lA = (lo * (lo-1)) ÷ 2
+    ComponentArray(;as=rand(lA), bs=rand(lA), cs=rand(lA))
+end
+
+""" Component Vector AA holds values for a bunch of A
+    where the ith A is AA[Symbol("d\$(i)")]
+    e.g. 3rd A is given by AA.d3
+"""
+init_AA(lo, nd) = ComponentArray(; (Symbol("d$(i)")=>init_A(lo) for i in 1:nd)...)
+
+""" Component Vector AAA holds values for a bunch of AA
+    where the ith AA is AAA[Symbol("k\$(i)")]
+    e.g. 3rd AA is given by AAA.k3
+"""
+init_AAA(los, nd) = ComponentArray(; (Symbol("k$(i)")=>init_AA(lo, nd) for (i, lo) in enumerate(los))...)
+
 function my_rmul!(A::AbstractVecOrMat{Complex{T}}, C::Op2{T}) where {T}
-    α, β = _ckparams(C)
+    α, β = (C.a + C.b * im, C.a + C.c * im)
     Base.require_one_based_indexing(A)
     m, n = size(A, 1), size(A, 2)
     (C.j > n) && throw(DimensionMismatch("no"))
@@ -25,8 +48,8 @@ function my_rmul!(A::AbstractVecOrMat{Complex{T}}, C::Op2{T}) where {T}
     A
 end
 
-function fe_rmul!(A::AbstractVecOrMat{Complex{T}}, C::Op2{T}) where {T}
-    α, β = _ckparams(C)
+function fe_my_rmul!(A::AbstractVecOrMat{Complex{T}}, C::Op2{T}) where {T}
+    α, β = (C.a + C.b * im, C.a + C.c * im)
     Base.require_one_based_indexing(A)
     m, n = size(A, 1), size(A, 2)
     (C.j > n) && throw(DimensionMismatch("no"))
@@ -48,15 +71,6 @@ fe_nextkj((k, j, c)) = c ? (1, j+1, false) : (k+1, j, j==k+1+1)
 Base.iterate(::fe_KJIterator, state=(1, 2, true)) = state, fe_nextkj(state)
 Base.IteratorSize(::Type{fe_KJIterator}) = Base.IsInfinite()
 
-""" Component Vector A holds values for many Op2
-    where the ith Op2 is Op2(k, j, A.as[i], A.bs[i], A.cs[i])
-    where k, j follow the sequence of KJIterator
-"""
-function init_A(lo)
-    lA = lo * (lo-1)÷ 2
-    ComponentArray(;as=rand(lA), bs=rand(lA), cs=rand(lA))
-end
-
 function rmul_from_A!(m, A)
     as, bs, cs = A.as, A.bs, A.cs
     for ((k, j, _), a, b, c) in zip(KJIterator(), as, bs, cs)
@@ -67,17 +81,11 @@ end
 
 function fe_rmul_from_A!(m, A)
     as, bs, cs = A.as, A.bs, A.cs
-    foreach(zip(KJIterator(), as, bs, cs)) do ((k, j, _), a, b, c)
-        fe_rmul!(m, Op2(k, j, a, b, c))
+    foreach(zip(fe_KJIterator(), as, bs, cs)) do ((k, j, _), a, b, c)
+        fe_my_rmul!(m, Op2(k, j, a, b, c))
     end
     nothing
 end
-
-""" Component Vector AA holds values for a bunch of A
-    where the ith A is AA[Symbol("d\$(i)")]
-    e.g. 3rd A is given by AA.d3
-"""
-init_AA(lo, nd) = ComponentArray(; (Symbol("d$(i)")=>init_A(lo) for i in 1:nd)...)
 
 function rmul_from_AA!(m, AA)
     for x in valkeys(AA)
@@ -100,12 +108,6 @@ function fe_m_to_AAmat!(m, AA)
     fe_rmul_from_AA!(m, AA)
 end
 
-""" Component Vector AAA holds values for a bunch of AA
-    where the ith AA is AAASymbol("k\$(i)")]
-    e.g. 3rd AA is given by AAA.k3
-"""
-init_AAA(los, nd) = ComponentArray(; (Symbol("k$(i)")=>init_AA(lo, nd) for (i, lo) in enumerate(los))...)
-
 function each_m_to_AAmat!(M, AAA)
     for (i, vi) in enumerate(valkeys(AAA))
         m_to_AAmat!(M[i], view(AAA, vi))
@@ -114,11 +116,29 @@ end
 
 function fe_each_m_to_AAmat!(M, AAA)
     foreach(enumerate(valkeys(AAA))) do (i, vi)
-        m_to_AAmat!(M[i], view(AAA, vi))
+        fe_m_to_AAmat!(M[i], view(AAA, vi))
     end
 end
 
-# TODO: try foreach
+function fe_diagprodthree!(res, A, B, C)
+    # Mismatched activity!
+    # foreach(axes(A, 1)) do i
+    #     foreach(axes(B, 1)) do j
+    #         foreach(axes(C, 1)) do k
+    #             res[i] += A[i, j] * B[j, k] * C[k, i]
+    #         end
+    #     end
+    # end
+    for i in axes(A, 1)
+        for j in axes(B, 1)
+            for k in axes(C, 1)
+                res[i] += A[i, j] * B[j, k] * C[k, i]
+            end
+        end
+    end
+    nothing
+end
+
 function diagprodthree!(res, A, B, C)
     for i in axes(A, 1)
         for j in axes(B, 1)
@@ -130,7 +150,15 @@ function diagprodthree!(res, A, B, C)
     nothing
 end
 
-@noinline function _obj_inner!(ik, bp, mats, storage)
+function _obj_inner!(ik, bp, mats, storage)
+    for (ib, bk) in enumerate(bp)
+        diagprodthree!(storage.diags,
+                       storage.M[ik],
+                       mats[ik][ib],
+                       adjoint(storage.M[bk]))
+    end
+end
+function fe_obj_inner!(ik, bp, mats, storage)
     # Mismatched activity!
     # foreach(enumerate(bp)) do (ib, bk)
     #     diagprodthree!(storage.diags,
@@ -139,7 +167,7 @@ end
     #                    adjoint(storage.M[bk]))
     # end
     for (ib, bk) in enumerate(bp)
-        diagprodthree!(storage.diags,
+        fe_diagprodthree!(storage.diags,
                        storage.M[ik],
                        mats[ik][ib],
                        adjoint(storage.M[bk]))
@@ -179,7 +207,7 @@ function fe_objective!(AAA, C, storage)
     # end
     for (ik, bp) in enumerate(C.bps)
         fill!(storage.diags, 0.0)
-        _obj_inner!(ik, bp, C.mats, storage)
+        fe_obj_inner!(ik, bp, C.mats, storage)
         res += sum(x->1-abs2(x), storage.diags)
     end
     res
@@ -278,19 +306,26 @@ function show_one(timed_res; msg=nothing)
                     Base.gc_alloc_count(gcstats), 0, 0, true; msg=msg)
 end
 
-fixKw(f; kwargs...) = (args...)->f(args...; kwargs...)
 function show_all(time_dat)
-    foreach(fixKw(show_one; msg="foreach, primal run"), time_dat.foreach_second.primal.run)
-    foreach(fixKw(show_one; msg="for, primal run"), time_dat.for_second.primal.run)
+    println("foreach, primal run")
+    foreach(show_one, time_dat.foreach_second.primal.run)
+    println("for, primal run")
+    foreach(show_one, time_dat.for_second.primal.run)
     println()
-    foreach(fixKw(show_one; msg="foreach, grad run"), time_dat.foreach_second.grad.run)
-    foreach(fixKw(show_one; msg="for, grad run"), time_dat.for_second.grad.run)
+    println("foreach, grad run")
+    foreach(show_one, time_dat.foreach_second.grad.run)
+    println("for, grad run")
+    foreach(show_one, time_dat.for_second.grad.run)
     println()
-    foreach(fixKw(show_one; msg="foreach before for, grad comp"), time_dat.foreach_first.grad.comp)
-    foreach(fixKw(show_one; msg="for before foreach, grad comp"), time_dat.for_first.grad.comp)
+    println("foreach before for, grad comp")
+    foreach(show_one, time_dat.foreach_first.grad.comp)
+    println("for before foreach, grad comp")
+    foreach(show_one, time_dat.for_first.grad.comp)
     println()
-    foreach(fixKw(show_one; msg="foreach after for, grad comp"), time_dat.foreach_second.grad.comp)
-    foreach(fixKw(show_one; msg="for after foreach, grad comp"), time_dat.for_second.grad.comp)
+    println("foreach after for, grad comp")
+    foreach(show_one, time_dat.foreach_second.grad.comp)
+    println("for after foreach, grad comp")
+    foreach(show_one, time_dat.for_second.grad.comp)
     println()
 end
 
@@ -307,4 +342,4 @@ function main()
     time_dat
 end
 
-#main()
+main()

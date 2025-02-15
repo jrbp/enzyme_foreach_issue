@@ -25,8 +25,6 @@ function my_rmul!(A::AbstractVecOrMat{Complex{T}}, C::Op2{T}) where {T}
     A
 end
 
-const fake_rmul = my_rmul!
-
 function fe_rmul!(A::AbstractVecOrMat{Complex{T}}, C::Op2{T}) where {T}
     α, β = _ckparams(C)
     Base.require_one_based_indexing(A)
@@ -40,12 +38,15 @@ function fe_rmul!(A::AbstractVecOrMat{Complex{T}}, C::Op2{T}) where {T}
     A
 end
 
-const fake_fe_rmul = fe_rmul!
-
 struct KJIterator end
 _nextkj((k, j, c)) = c ? (1, j+1, false) : (k+1, j, j==k+1+1)
 Base.iterate(::KJIterator, state=(1, 2, true)) = state, _nextkj(state)
 Base.IteratorSize(::Type{KJIterator}) = Base.IsInfinite()
+
+struct fe_KJIterator end
+fe_nextkj((k, j, c)) = c ? (1, j+1, false) : (k+1, j, j==k+1+1)
+Base.iterate(::fe_KJIterator, state=(1, 2, true)) = state, fe_nextkj(state)
+Base.IteratorSize(::Type{fe_KJIterator}) = Base.IsInfinite()
 
 """ Component Vector A holds values for many Op2
     where the ith Op2 is Op2(k, j, A.as[i], A.bs[i], A.cs[i])
@@ -64,8 +65,6 @@ function rmul_from_A!(m, A)
     nothing
 end
 
-const fake_rmul_from_A! = rmul_from_A!
-
 function fe_rmul_from_A!(m, A)
     as, bs, cs = A.as, A.bs, A.cs
     foreach(zip(KJIterator(), as, bs, cs)) do ((k, j, _), a, b, c)
@@ -73,8 +72,6 @@ function fe_rmul_from_A!(m, A)
     end
     nothing
 end
-
-const fake_fe_rmul_from_A! = fe_rmul_from_A!
 
 """ Component Vector AA holds values for a bunch of A
     where the ith A is AA[Symbol("d\$(i)")]
@@ -87,30 +84,24 @@ function rmul_from_AA!(m, AA)
         rmul_from_A!(m, view(AA, x))
     end
 end
-const fake_rmul_from_AA! = rmul_from_AA!
-
 function fe_rmul_from_AA!(m, AA)
     foreach(valkeys(AA)) do x
         fe_rmul_from_A!(m, view(AA, x))
     end
 end
 
-const fake_fe_rmul_from_AA! = fe_rmul_from_AA!
-
 function m_to_AAmat!(m, AA)
     copyto!(m, I)
     rmul_from_AA!(m, AA)
 end
-const fake_m_to_AAmat! = m_to_AAmat!
 
 function fe_m_to_AAmat!(m, AA)
     copyto!(m, I)
     fe_rmul_from_AA!(m, AA)
 end
-const fake_fe_m_to_AAmat! = fe_m_to_AAmat!
 
 """ Component Vector AAA holds values for a bunch of AA
-    where the ith AA is AAA[Symbol("k\$(i)")]
+    where the ith AA is AAASymbol("k\$(i)")]
     e.g. 3rd AA is given by AAA.k3
 """
 init_AAA(los, nd) = ComponentArray(; (Symbol("k$(i)")=>init_AA(lo, nd) for (i, lo) in enumerate(los))...)
@@ -120,14 +111,12 @@ function each_m_to_AAmat!(M, AAA)
         m_to_AAmat!(M[i], view(AAA, vi))
     end
 end
-const fake_each_m_to_AAmat! = each_m_to_AAmat!
 
 function fe_each_m_to_AAmat!(M, AAA)
     foreach(enumerate(valkeys(AAA))) do (i, vi)
         m_to_AAmat!(M[i], view(AAA, vi))
     end
 end
-const fake_fe_each_m_to_AAmat! = fe_each_m_to_AAmat!
 
 # TODO: try foreach
 function diagprodthree!(res, A, B, C)
@@ -167,19 +156,8 @@ function objective!(AAA, C, storage)
     end
     res
 end
-const fake_objective! = objective!
 
 function ∇objective!(∂AAA, AAA, C, storage, ∂storage)
-    Enzyme.make_zero!(∂AAA)
-    Enzyme.make_zero!(∂storage)
-    Enzyme.autodiff(Enzyme.Reverse,
-        objective!, Enzyme.Active,
-        Enzyme.Duplicated(AAA, ∂AAA),
-        Enzyme.Const(C),
-        Enzyme.Duplicated(storage, ∂storage))
-    nothing
-end
-function ∇fake_objective!(∂AAA, AAA, C, storage, ∂storage)
     Enzyme.make_zero!(∂AAA)
     Enzyme.make_zero!(∂storage)
     Enzyme.autodiff(Enzyme.Reverse,
@@ -206,25 +184,12 @@ function fe_objective!(AAA, C, storage)
     end
     res
 end
-const fake_fe_objective! = fe_objective!
-
 
 function ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)
     Enzyme.make_zero!(∂AAA)
     Enzyme.make_zero!(∂storage)
     Enzyme.autodiff(Enzyme.Reverse,
         fe_objective!, Enzyme.Active,
-        Enzyme.Duplicated(AAA, ∂AAA),
-        Enzyme.Const(C),
-        Enzyme.Duplicated(storage, ∂storage))
-    nothing
-end
-
-function ∇fake_fe_objective!(∂AAA, AAA, C, storage, ∂storage)
-    Enzyme.make_zero!(∂AAA)
-    Enzyme.make_zero!(∂storage)
-    Enzyme.autodiff(Enzyme.Reverse,
-        fake_fe_objective!, Enzyme.Active,
         Enzyme.Duplicated(AAA, ∂AAA),
         Enzyme.Const(C),
         Enzyme.Duplicated(storage, ∂storage))
@@ -245,116 +210,101 @@ function init_mats(bps, los, T=Float64)
     end
 end
 
-
-function run_themrev(; seed, lnn, nk, nbs, nd, lovary)
+function init_primal(; seed, lnn, nk, nbs, nd, lovary)
     possible_lo = lnn .+ lovary
     Random.seed!(seed)
     los = rand(possible_lo, nk)
     bps = map(x->rand(eachindex(los), nbs), los)
-    storage = init_storage(lnn, los)
     mats = init_mats(bps, los)
-    C = (; bps, mats)
-    AAA = init_AAA(los, nd)
+
+    (; AAA = init_AAA(los, nd),
+     C = (; bps, mats),
+     storage = init_storage(lnn, los))
+end
+
+function run_themrev!(time_dat; kwargs...)
+    (;AAA, C, storage) = init_primal(; kwargs...)
     ∂AAA = Enzyme.make_zero(AAA)
     ∂storage = Enzyme.make_zero(storage)
 
-    println("for(iter) do x")
-    @time ∇fake_fe_objective!(∂AAA, AAA, C, storage, ∂storage)
-    println("for x in iter")
-    @time ∇fake_objective!(∂AAA, AAA, C, storage, ∂storage)
+    (;foreach_first, foreach_second, for_first, for_second) = time_dat
 
-    # println()
-    # println((; seed, lnn, nk, nbs, nd, lovary))
-    # println("for(iter) do x")
-    # println(" Primal compile")
-    # @time fe_objective!(AAA, C, storage)
-    # println(" Primal run")
-    # @time fe_objective!(AAA, C, storage)
-    # println(" Grad compile")
-    # @time ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println(" Grad run")
-    # @time ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println()
-    # println("for x in iter")
-    # println(" Primal compile")
-    # @time objective!(AAA, C, storage)
-    # println(" Primal run")
-    # @time objective!(AAA, C, storage)
-    # println(" Grad compile")
-    # @time ∇objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println(" Grad run")
-    # @time ∇objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println()
-    # println()
+    push!(foreach_first.primal.comp, (@timed fe_objective!(AAA, C, storage)))
+    push!(foreach_first.primal.run, (@timed fe_objective!(AAA, C, storage)))
+    push!(foreach_first.grad.comp, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(foreach_first.grad.run, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
+
+    push!(for_second.primal.comp, (@timed objective!(AAA, C, storage)))
+    push!(for_second.primal.run, (@timed objective!(AAA, C, storage)))
+    push!(for_second.grad.comp, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(for_second.grad.run, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
+
     nothing
 end
-function run_them(; seed, lnn, nk, nbs, nd, lovary)
-    possible_lo = lnn .+ lovary
-    Random.seed!(seed)
-    los = rand(possible_lo, nk)
-    bps = map(x->rand(eachindex(los), nbs), los)
-    storage = init_storage(lnn, los)
-    mats = init_mats(bps, los)
-    C = (; bps, mats)
-    AAA = init_AAA(los, nd)
+
+function run_them!(time_dat; kwargs...)
+    (;AAA, C, storage) = init_primal(;kwargs...)
     ∂AAA = Enzyme.make_zero(AAA)
     ∂storage = Enzyme.make_zero(storage)
 
-    println("for x in iter")
-    @time ∇fake_objective!(∂AAA, AAA, C, storage, ∂storage)
-    println("for(iter) do x")
-    @time ∇fake_fe_objective!(∂AAA, AAA, C, storage, ∂storage)
+    (;foreach_first, foreach_second, for_first, for_second) = time_dat
 
-    # println()
-    # println((; seed, lnn, nk, nbs, nd, lovary))
-    # println("for x in iter")
-    # println(" Primal compile")
-    # @time objective!(AAA, C, storage)
-    # println(" Primal run")
-    # @time objective!(AAA, C, storage)
-    # println(" Grad compile")
-    # @time ∇objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println(" Grad run")
-    # @time ∇objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println()
-    # println("for(iter) do x")
-    # println(" Primal compile")
-    # @time fe_objective!(AAA, C, storage)
-    # println(" Primal run")
-    # @time fe_objective!(AAA, C, storage)
-    # println(" Grad compile")
-    # @time ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println(" Grad run")
-    # @time ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)
-    # println()
-    # println()
+    push!(for_first.primal.comp, (@timed objective!(AAA, C, storage)))
+    push!(for_first.primal.run, (@timed objective!(AAA, C, storage)))
+    push!(for_first.grad.comp, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(for_first.grad.run, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
+
+    push!(foreach_second.primal.comp, (@timed fe_objective!(AAA, C, storage)))
+    push!(foreach_second.primal.run, (@timed fe_objective!(AAA, C, storage)))
+    push!(foreach_second.grad.comp, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(foreach_second.grad.run, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
+
     nothing
+end
+
+TimedRes{T} = @NamedTuple{value::T,
+                          time::Float64,
+                          bytes::Int64,
+                          gctime::Float64,
+                          gcstats::Base.GC_Diff}
+CompRunRes{T} = @NamedTuple{comp::TimedRes{T}, run::TimedRes{T}}
+CompRunRes{T}() where {T} = (;comp=TimedRes{T}[], run=TimedRes{T}[])
+PrimalGradRes{T, TG} = @NamedTuple{primal::CompRunRes{T}, grad::CompRunRes{TG}}
+PrimalGradRes{T, TG}() where {T, TG} = (;primal=CompRunRes{T}(), grad=CompRunRes{TG}())
+
+function show_one(timed_res; msg=nothing)
+    (; time, gcstats) = timed_res
+    Base.time_print(Base.stdout, time*1e9, gcstats.allocd, gcstats.total_time,
+                    Base.gc_alloc_count(gcstats), 0, 0, true; msg=msg)
+end
+
+fixKw(f; kwargs...) = (args...)->f(args...; kwargs...)
+function show_all(time_dat)
+    foreach(fixKw(show_one; msg="foreach, primal run"), time_dat.foreach_second.primal.run)
+    foreach(fixKw(show_one; msg="for, primal run"), time_dat.for_second.primal.run)
+    println()
+    foreach(fixKw(show_one; msg="foreach, grad run"), time_dat.foreach_second.grad.run)
+    foreach(fixKw(show_one; msg="for, grad run"), time_dat.for_second.grad.run)
+    println()
+    foreach(fixKw(show_one; msg="foreach before for, grad comp"), time_dat.foreach_first.grad.comp)
+    foreach(fixKw(show_one; msg="for before foreach, grad comp"), time_dat.for_first.grad.comp)
+    println()
+    foreach(fixKw(show_one; msg="foreach after for, grad comp"), time_dat.foreach_second.grad.comp)
+    foreach(fixKw(show_one; msg="for after foreach, grad comp"), time_dat.for_second.grad.comp)
+    println()
 end
 
 function main()
-    run_them(;
-              seed = 123,
-              lnn = 3,
-              nk = 6,
-              nbs = 3,
-              nd = 2,
-              lovary = 0:9)
-
-    run_themrev(;
-              seed = 123,
-              lnn = 10,
-              nk = 20,
-              nbs = 5,
-              nd = 5,
-              lovary = 0:9)
-
-    run_them(;
-              seed = 123,
-              lnn = 30,
-              nk = 30,
-              nbs = 8,
-              nd = 8,
-              lovary = 0:9)
+    time_dat = (;foreach_first = PrimalGradRes{Float64, Nothing}(),
+                foreach_second = PrimalGradRes{Float64, Nothing}(),
+                for_first = PrimalGradRes{Float64, Nothing}(),
+                for_second = PrimalGradRes{Float64, Nothing}())
+    for lnn in 31:2:39
+        run_them!(time_dat; seed = 123, lnn = lnn, nk = 20, nbs = 5, nd = 5, lovary = 0:9)
+        run_themrev!(time_dat; seed = 123, lnn = lnn+1, nk = 20, nbs = 5, nd = 5, lovary = 0:9)
+    end
+    show_all(time_dat)
+    time_dat
 end
 
-main()
+#main()

@@ -2,6 +2,7 @@ using LinearAlgebra
 using ComponentArrays
 using Enzyme
 using Random
+import Pkg
 
 """ For in-place right mulitplying with matrices via
     my_rmul! or fe_my_rmul! (acts like a particular sparse matrix)
@@ -120,15 +121,7 @@ function fe_each_m_to_AAmat!(M, AAA)
     end
 end
 
-function fe_diagprodthree!(res, A, B, C)
-    # Mismatched activity!
-    # foreach(axes(A, 1)) do i
-    #     foreach(axes(B, 1)) do j
-    #         foreach(axes(C, 1)) do k
-    #             res[i] += A[i, j] * B[j, k] * C[k, i]
-    #         end
-    #     end
-    # end
+function diagprodthree!(res, A, B, C)
     for i in axes(A, 1)
         for j in axes(B, 1)
             for k in axes(C, 1)
@@ -139,7 +132,16 @@ function fe_diagprodthree!(res, A, B, C)
     nothing
 end
 
-function diagprodthree!(res, A, B, C)
+function fe_diagprodthree!(res, A, B, C)
+    # Mismatched activity!
+    # will error if any single loop is changed
+    # foreach(axes(A, 1)) do i
+    #     foreach(axes(B, 1)) do j
+    #         foreach(axes(C, 1)) do k
+    #             res[i] += A[i, j] * B[j, k] * C[k, i]
+    #         end
+    #     end
+    # end
     for i in axes(A, 1)
         for j in axes(B, 1)
             for k in axes(C, 1)
@@ -158,10 +160,11 @@ function _obj_inner!(ik, bp, mats, storage)
                        adjoint(storage.M[bk]))
     end
 end
+
 function fe_obj_inner!(ik, bp, mats, storage)
     # Mismatched activity!
     # foreach(enumerate(bp)) do (ib, bk)
-    #     diagprodthree!(storage.diags,
+    #     fe_diagprodthree!(storage.diags,
     #                    storage.M[ik],
     #                    mats[ik][ib],
     #                    adjoint(storage.M[bk]))
@@ -198,12 +201,19 @@ end
 
 function fe_objective!(AAA, C, storage)
     fe_each_m_to_AAmat!(storage.M, AAA)
+    # # Mismatched activity!
+    # sum(enumerate(C.bps)) do (ik, bp)
+    #     fill!(storage.diags, 0.0)
+    #     fe_obj_inner!(ik, bp, C.mats, storage)
+    #     sum(x->1-abs2(x), storage.diags)
+    # end
+    #####
     res = 0.0
-    # Mismatched activity!
+    # Mismatched activity! + doubles primal allocations unles res is Ref
     # foreach(enumerate(C.bps)) do (ik, bp)
     #     fill!(storage.diags, 0.0)
-    #     _obj_inner!(ik, bp, C.mats, storage)
-    #     res += sum(x->1-abs2(x), storage.diags)
+    #     fe_obj_inner!(ik, bp, C.mats, storage)
+    #     storage.res[1] += sum(x->1-abs2(x), storage.diags)
     # end
     for (ik, bp) in enumerate(C.bps)
         fill!(storage.diags, 0.0)
@@ -238,54 +248,36 @@ function init_mats(bps, los, T=Float64)
     end
 end
 
-function init_primal(; seed, lnn, nk, nbs, nd, lovary)
+function init_params(; seed, lnn, nk, nbs, nd, lovary)
     possible_lo = lnn .+ lovary
     Random.seed!(seed)
     los = rand(possible_lo, nk)
     bps = map(x->rand(eachindex(los), nbs), los)
     mats = init_mats(bps, los)
 
-    (; AAA = init_AAA(los, nd),
-     C = (; bps, mats),
-     storage = init_storage(lnn, los))
-end
-
-function run_themrev!(time_dat; kwargs...)
-    (;AAA, C, storage) = init_primal(; kwargs...)
+    AAA = init_AAA(los, nd)
     ∂AAA = Enzyme.make_zero(AAA)
+    C = (; bps, mats)
+    storage = init_storage(lnn, los)
     ∂storage = Enzyme.make_zero(storage)
 
-    (;foreach_first, foreach_second, for_first, for_second) = time_dat
-
-    push!(foreach_first.primal.comp, (@timed fe_objective!(AAA, C, storage)))
-    push!(foreach_first.primal.run, (@timed fe_objective!(AAA, C, storage)))
-    push!(foreach_first.grad.comp, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
-    push!(foreach_first.grad.run, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
-
-    push!(for_second.primal.comp, (@timed objective!(AAA, C, storage)))
-    push!(for_second.primal.run, (@timed objective!(AAA, C, storage)))
-    push!(for_second.grad.comp, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
-    push!(for_second.grad.run, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
-
-    nothing
+    (;∂AAA, AAA, C, storage, ∂storage)
 end
 
 function run_them!(time_dat; kwargs...)
-    (;AAA, C, storage) = init_primal(;kwargs...)
-    ∂AAA = Enzyme.make_zero(AAA)
-    ∂storage = Enzyme.make_zero(storage)
+    (; ∂AAA, AAA, C, storage, ∂storage) = init_params(; kwargs...)
 
-    (;foreach_first, foreach_second, for_first, for_second) = time_dat
+    (;foreach_times, for_times) = time_dat
 
-    push!(for_first.primal.comp, (@timed objective!(AAA, C, storage)))
-    push!(for_first.primal.run, (@timed objective!(AAA, C, storage)))
-    push!(for_first.grad.comp, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
-    push!(for_first.grad.run, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(for_times.primal.comp, (@timed objective!(AAA, C, storage)))
+    push!(for_times.primal.run, (@timed objective!(AAA, C, storage)))
+    push!(for_times.grad.comp, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(for_times.grad.run, (@timed ∇objective!(∂AAA, AAA, C, storage, ∂storage)))
 
-    push!(foreach_second.primal.comp, (@timed fe_objective!(AAA, C, storage)))
-    push!(foreach_second.primal.run, (@timed fe_objective!(AAA, C, storage)))
-    push!(foreach_second.grad.comp, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
-    push!(foreach_second.grad.run, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(foreach_times.primal.comp, (@timed fe_objective!(AAA, C, storage)))
+    push!(foreach_times.primal.run, (@timed fe_objective!(AAA, C, storage)))
+    push!(foreach_times.grad.comp, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
+    push!(foreach_times.grad.run, (@timed ∇fe_objective!(∂AAA, AAA, C, storage, ∂storage)))
 
     nothing
 end
@@ -307,36 +299,88 @@ function show_one(timed_res; msg=nothing)
 end
 
 function show_all(time_dat)
-    println("foreach, primal run")
-    foreach(show_one, time_dat.foreach_second.primal.run)
+    println(Pkg.status())
     println("for, primal run")
-    foreach(show_one, time_dat.for_second.primal.run)
+    foreach(show_one, time_dat.for_times.primal.run)
+    println("foreach, primal run")
+    foreach(show_one, time_dat.foreach_times.primal.run)
     println()
-    println("foreach, grad run")
-    foreach(show_one, time_dat.foreach_second.grad.run)
     println("for, grad run")
-    foreach(show_one, time_dat.for_second.grad.run)
+    foreach(show_one, time_dat.for_times.grad.run)
+    println("foreach, grad run")
+    foreach(show_one, time_dat.foreach_times.grad.run)
     println()
-    println("foreach before for, grad comp")
-    foreach(show_one, time_dat.foreach_first.grad.comp)
-    println("for before foreach, grad comp")
-    foreach(show_one, time_dat.for_first.grad.comp)
+    println("for, primal comp")
+    foreach(show_one, time_dat.for_times.primal.comp)
+    println("foreach, primal comp")
+    foreach(show_one, time_dat.foreach_times.primal.comp)
     println()
-    println("foreach after for, grad comp")
-    foreach(show_one, time_dat.foreach_second.grad.comp)
-    println("for after foreach, grad comp")
-    foreach(show_one, time_dat.for_second.grad.comp)
+    println("note: first gradient comp always takes longer")
+    println("for, grad comp")
+    foreach(show_one, time_dat.for_times.grad.comp)
+    println("foreach, grad comp")
+    foreach(show_one, time_dat.foreach_times.grad.comp)
     println()
 end
 
-function main()
-    time_dat = (;foreach_first = PrimalGradRes{Float64, Nothing}(),
-                foreach_second = PrimalGradRes{Float64, Nothing}(),
-                for_first = PrimalGradRes{Float64, Nothing}(),
-                for_second = PrimalGradRes{Float64, Nothing}())
-    for lnn in 31:2:39
+
+### Simple case which don't seem to have issues with foreach
+
+function simpleobjective!(A)
+    res = 0.0
+    for v in A
+        res += v
+    end
+    res
+end
+
+function ∇simpleobjective!(∂A, A)
+    Enzyme.make_zero!(∂A)
+    Enzyme.autodiff(Enzyme.Reverse,
+        simpleobjective!, Enzyme.Active,
+        Enzyme.Duplicated(A, ∂A))
+    nothing
+end
+
+function fe_simpleobjective!(A)
+    res = 0.0
+    # enzyme grad allocates, but works
+    foreach(enumerate(A)) do (i, v)
+        res += v
+    end
+    res
+    # no grad allocation, and works
+    # sum(A)
+    # also doesn't allocate, and works
+    # sum(enumerate(A)) do (i,v)
+    #     1-abs2(v) * i
+    # end
+end
+
+function ∇fe_simpleobjective!(∂A, A)
+    Enzyme.make_zero!(∂A)
+    Enzyme.autodiff(Enzyme.Reverse,
+        fe_sobjective!, Enzyme.Active,
+        Enzyme.Duplicated(A, ∂A))
+    nothing
+end
+
+function main(lnns=2:3:20)
+    simple_vec = rand(10)
+    @time  "simple run  for    " simpleobjective!(simple_vec)
+    @time  "simple run  for    " simpleobjective!(simple_vec)
+    @time  "simple run  foreach" fe_simpleobjective!(simple_vec)
+    @time  "simple run  foreach" fe_simpleobjective!(simple_vec)
+    @time  "simple grad for    " ∇simpleobjective!(simple_vec)
+    @time  "simple grad for    " ∇simpleobjective!(simple_vec)
+    @time  "simple grad foreach" ∇fe_simpleobjective!(simple_vec)
+    @time  "simple grad foreach" ∇fe_simpleobjective!(simple_vec)
+    println("End simple cases")
+
+    time_dat = (;foreach_times = PrimalGradRes{Float64, Nothing}(),
+                for_times = PrimalGradRes{Float64, Nothing}(),)
+    foreach(lnns) do lnn
         run_them!(time_dat; seed = 123, lnn = lnn, nk = 20, nbs = 5, nd = 5, lovary = 0:9)
-        run_themrev!(time_dat; seed = 123, lnn = lnn+1, nk = 20, nbs = 5, nd = 5, lovary = 0:9)
     end
     show_all(time_dat)
     time_dat

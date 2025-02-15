@@ -201,20 +201,20 @@ end
 
 function fe_objective!(AAA, C, storage)
     fe_each_m_to_AAmat!(storage.M, AAA)
-    # # Mismatched activity!
+    ## Mismatched activity!
     # sum(enumerate(C.bps)) do (ik, bp)
     #     fill!(storage.diags, 0.0)
     #     fe_obj_inner!(ik, bp, C.mats, storage)
     #     sum(x->1-abs2(x), storage.diags)
     # end
-    #####
     res = 0.0
-    # Mismatched activity! + doubles primal allocations unles res is Ref
+    ## Mismatched activity! + doubles primal allocations unles res is Ref
     # foreach(enumerate(C.bps)) do (ik, bp)
     #     fill!(storage.diags, 0.0)
     #     fe_obj_inner!(ik, bp, C.mats, storage)
-    #     storage.res[1] += sum(x->1-abs2(x), storage.diags)
+    #     res += sum(x->1-abs2(x), storage.diags)
     # end
+    ## Runs
     for (ik, bp) in enumerate(C.bps)
         fill!(storage.diags, 0.0)
         fe_obj_inner!(ik, bp, C.mats, storage)
@@ -360,21 +360,22 @@ end
 function ∇fe_simpleobjective!(∂A, A)
     Enzyme.make_zero!(∂A)
     Enzyme.autodiff(Enzyme.Reverse,
-        fe_sobjective!, Enzyme.Active,
+        fe_simpleobjective!, Enzyme.Active,
         Enzyme.Duplicated(A, ∂A))
     nothing
 end
 
 function main(lnns=2:3:20)
     simple_vec = rand(10)
+    ∂simple_vec = Enzyme.make_zero(simple_vec)
     @time  "simple run  for    " simpleobjective!(simple_vec)
     @time  "simple run  for    " simpleobjective!(simple_vec)
     @time  "simple run  foreach" fe_simpleobjective!(simple_vec)
     @time  "simple run  foreach" fe_simpleobjective!(simple_vec)
-    @time  "simple grad for    " ∇simpleobjective!(simple_vec)
-    @time  "simple grad for    " ∇simpleobjective!(simple_vec)
-    @time  "simple grad foreach" ∇fe_simpleobjective!(simple_vec)
-    @time  "simple grad foreach" ∇fe_simpleobjective!(simple_vec)
+    @time  "simple grad for    " ∇simpleobjective!(∂simple_vec, simple_vec)
+    @time  "simple grad for    " ∇simpleobjective!(∂simple_vec, simple_vec)
+    @time  "simple grad foreach" ∇fe_simpleobjective!(∂simple_vec, simple_vec)
+    @time  "simple grad foreach" ∇fe_simpleobjective!(∂simple_vec, simple_vec)
     println("End simple cases")
 
     time_dat = (;foreach_times = PrimalGradRes{Float64, Nothing}(),

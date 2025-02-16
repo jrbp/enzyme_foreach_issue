@@ -1,0 +1,61 @@
+simple run  for    : 0.000000 seconds
+simple run  for    : 0.000001 seconds
+simple run  foreach: 0.000003 seconds (21 allocations: 336 bytes)
+simple run  foreach: 0.000001 seconds (21 allocations: 336 bytes)
+simple grad for    : 0.000000 seconds
+simple grad for    : 0.000000 seconds
+simple grad foreach: 0.127642 seconds (94.71 k allocations: 6.022 MiB, 12.37% gc time, 99.88% compilation time)
+simple grad foreach: 0.000021 seconds (82 allocations: 3.688 KiB)
+End simple cases
+
+
+
+
+
+ERROR: LoadError: Constant memory is stored (or returned) to a differentiable variable.
+As a result, Enzyme cannot provably ensure correctness and throws this error.
+This might be due to the use of a constant variable as temporary storage for active memory (https://enzyme.mit.edu/julia/stable/faq/#Runtime-Activity).
+If Enzyme should be able to prove this use non-differentable, open an issue!
+To work around this issue, either:
+ a) rewrite this variable to not be conditionally active (fastest, but requires a code change), or
+ b) set the Enzyme mode to turn on runtime activity (e.g. autodiff(set_runtime_activity(Reverse), ...) ). This will maintain correctness, but may slightly reduce performance.
+Mismatched activity for:   %unbox8.i.fca.0.0.insert = insertvalue [1 x [2 x i64]] poison, i64 %15, 0, 0, !dbg !133 const val:   %15 = add i64 %unbox2.i, 4536, !dbg !90
+Type tree: {[-1]:Anything}
+ llvalue=  %15 = add i64 %unbox2.i, 4536, !dbg !90
+
+Stacktrace:
+  [1] SubArray
+    @ ./subarray.jl:22
+  [2] SubArray
+    @ ./subarray.jl:38
+  [3] SubArray
+    @ ./subarray.jl:28
+  [4] _maybe_reindex
+    @ ./subarray.jl:241
+  [5] _maybe_reindex
+    @ ./subarray.jl:237
+  [6] _maybe_reindex
+    @ ./subarray.jl:231
+  [7] unsafe_view
+    @ ./subarray.jl:230
+  [8] view
+    @ ./subarray.jl:184
+  [9] macro expansion
+    @ ~/.julia/packages/ComponentArrays/liKZy/src/array_interface.jl:0
+ [10] _getindex
+    @ ~/.julia/packages/ComponentArrays/liKZy/src/array_interface.jl:119
+ [11] view
+    @ ~/.julia/packages/ComponentArrays/liKZy/src/array_interface.jl:113
+ [12] view
+    @ ~/.julia/packages/ComponentArrays/liKZy/src/array_interface.jl:0
+
+Stacktrace:
+  [1] SubArray
+    @ ./subarray.jl:22 [inlined]
+  [2] SubArray
+    @ ./subarray.jl:38 [inlined]
+  [3] SubArray
+    @ ./subarray.jl:28 [inlined]
+  [4] _maybe_reindex
+    @ ./subarray.jl:241 [inlined]
+ 

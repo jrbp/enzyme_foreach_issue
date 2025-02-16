@@ -1,0 +1,96 @@
+Julia: v1.11.3
+Project enzyme_test v0.1.0
+Status `~/git/temp/enzyme_foreach/Project.toml`
+  [b0b7db55] ComponentArrays v0.15.24
+  [7da242da] Enzyme v0.13.30
+  [37e2e46d] LinearAlgebra v1.11.0
+  [9a3f8284] Random v1.11.0
+
+15
+16
+17
+18
+for, gradient failed for Base.Pairs{Symbol, Any, NTuple{6, Symbol}, @NamedTuple{seed::Int64, lnn::Int64, nk::Int64, nbs::Int64, nd::Int64, lovary::UnitRange{Int64}}}(:seed => 123, :lnn => 18, :nk => 20, :nbs => 5, :nd => 5, :lovary => 0:9) with Enzyme.Compiler.EnzymeRuntimeActivityError(Cstring(0x00007cf4c4fe0398))
+19
+for, gradient failed for Base.Pairs{Symbol, Any, NTuple{6, Symbol}, @NamedTuple{seed::Int64, lnn::Int64, nk::Int64, nbs::Int64, nd::Int64, lovary::UnitRange{Int64}}}(:seed => 123, :lnn => 19, :nk => 20, :nbs => 5, :nd => 5, :lovary => 0:9) with Enzyme.Compiler.EnzymeRuntimeActivityError(Cstring(0x00007cf4c4fe0398))
+20
+for, gradient failed for Base.Pairs{Symbol, Any, NTuple{6, Symbol}, @NamedTuple{seed::Int64, lnn::Int64, nk::Int64, nbs::Int64, nd::Int64, lovary::UnitRange{Int64}}}(:seed => 123, :lnn => 20, :nk => 20, :nbs => 5, :nd => 5, :lovary => 0:9) with Enzyme.Compiler.EnzymeRuntimeActivityError(Cstring(0x00007cf49f511010))
+Complicated cases which succeeded
+Here foreach is only used where it does not cause activity errors
+for, primal run
+  0.003405 seconds (241 allocations: 10.641 KiB)
+  0.003844 seconds (241 allocations: 10.641 KiB)
+  0.004465 seconds (241 allocations: 10.641 KiB)
+  0.006617 seconds (241 allocations: 10.641 KiB)
+  0.005860 seconds (241 allocations: 10.641 KiB)
+  0.007495 seconds (241 allocations: 10.641 KiB)
+foreach, primal run
+  0.005051 seconds (40 allocations: 960 bytes)
+  0.005181 seconds (40 allocations: 960 bytes)
+  0.006110 seconds (40 allocations: 960 bytes)
+  0.007110 seconds (40 allocations: 960 bytes)
+  0.008074 seconds (40 allocations: 960 bytes)
+  0.009256 seconds (40 allocations: 960 bytes)
+
+for, grad run
+  0.054179 seconds (22.41 k allocations: 5.446 MiB)
+  0.054106 seconds (23.63 k allocations: 6.008 MiB)
+  0.062890 seconds (24.83 k allocations: 6.593 MiB)
+foreach, grad run
+  0.093614 seconds (123.77 k allocations: 42.986 MiB)
+  0.123942 seconds (133.69 k allocations: 51.597 MiB, 20.19% gc time)
+  0.162485 seconds (143.69 k allocations: 57.133 MiB, 21.45% gc time)
+  0.139733 seconds (153.69 k allocations: 67.276 MiB, 16.69% gc time)
+  0.203961 seconds (165.59 k allocations: 76.425 MiB, 23.85% gc time)
+  0.250002 seconds (176.40 k allocations: 86.318 MiB, 29.99% gc time)
+
+for, primal comp
+  2.936295 seconds (5.51 M allocations: 280.523 MiB, 6.78% gc time, 99.78% compilation time)
+  0.463446 seconds (778.31 k allocations: 38.404 MiB, 98.90% compilation time)
+  0.472968 seconds (778.32 k allocations: 38.405 MiB, 3.61% gc time, 98.82% compilation time)
+  0.532022 seconds (778.34 k allocations: 38.436 MiB, 98.57% compilation time)
+  0.470079 seconds (778.38 k allocations: 38.452 MiB, 98.47% compilation time)
+  0.512250 seconds (778.33 k allocations: 38.422 MiB, 98.32% compilation time)
+foreach, primal comp
+  1.539588 seconds (4.84 M allocations: 247.882 MiB, 3.63% gc time, 99.60% compilation time)
+  0.273903 seconds (742.64 k allocations: 37.431 MiB, 97.92% compilation time)
+  0.277451 seconds (742.65 k allocations: 37.434 MiB, 97.61% compilation time)
+  0.288110 seconds (742.70 k allocations: 37.441 MiB, 97.35% compilation time)
+  0.289152 seconds (742.73 k allocations: 37.444 MiB, 97.00% compilation time)
+  0.287054 seconds (742.71 k allocations: 37.436 MiB, 96.54% compilation time)
+
+note: first gradient comp always takes longer
+for, grad comp
+ 40.281333 seconds (60.77 M allocations: 2.795 GiB, 1.30% gc time, 99.81% compilation time)
+  6.574155 seconds (8.71 M allocations: 393.783 MiB, 0.99% gc time, 98.96% compilation time)
+  6.301987 seconds (8.71 M allocations: 394.435 MiB, 4.32% gc time, 95.29% compilation time)
+foreach, grad comp
+ 66.954294 seconds (73.93 M allocations: 3.248 GiB, 1.84% gc time, 99.87% compilation time)
+ 52.405679 seconds (46.21 M allocations: 1.847 GiB, 0.93% gc time, 99.73% compilation time)
+ 55.132812 seconds (46.23 M allocations: 1.852 GiB, 0.96% gc time, 99.78% compilation time)
+ 57.191039 seconds (46.86 M allocations: 1.889 GiB, 1.02% gc time, 99.77% compilation time)
+ 57.247739 seconds (47.76 M allocations: 1.941 GiB, 1.06% gc time, 99.26% compilation time)
+ 57.367513 seconds (47.78 M allocations: 1.951 GiB, 0.52% gc time, 99.65% compilation time)
+
+
+Simple foreach/sum cases which work:
+simple run  for    : 0.000000 seconds
+simple run  for    : 0.000000 seconds
+simple run  foreach: 0.000003 seconds (21 allocations: 336 bytes)
+simple run  foreach: 0.000001 seconds (21 allocations: 336 bytes)
+simple run  sum    : 0.000000 seconds
+simple run  sum    : 0.000000 seconds
+simple grad for    : 0.000000 seconds
+simple grad for    : 0.000000 seconds
+simple grad foreach: 0.129338 seconds (106.67 k allocations: 5.192 MiB, 99.85% compilation time)
+simple grad foreach: 0.000027 seconds (98 allocations: 5.031 KiB)
+simple grad sum    : 0.000000 seconds
+simple grad sum    : 0.000000 seconds
+
+foreach/sum cases which fail:
+all foreach primal: 2.350700 seconds (7.36 M allocations: 374.581 MiB, 2.94% gc time, 99.97% compilation time)
+all foreach primal: 0.000195 seconds (80 allocations: 1.562 KiB)
+all foreach , gradient failed for Base.Pairs{Symbol, Any, NTuple{6, Symbol}, @NamedTuple{seed::Int64, lnn::Int64, nk::Int64, nbs::Int64, nd::Int64, lovary::UnitRange{Int64}}}(:seed => 123, :lnn => 3, :nk => 20, :nbs => 5, :nd => 5, :lovary => 0:9) with Enzyme.Compiler.EnzymeRuntimeActivityError(Cstring(0x00007cf49f5363e0))
+all foreach , gradient failed for Base.Pairs{Symbol, Any, NTuple{6, Symbol}, @NamedTuple{seed::Int64, lnn::Int64, nk::Int64, nbs::Int64, nd::Int64, lovary::UnitRange{Int64}}}(:seed => 123, :lnn => 3, :nk => 20, :nbs => 5, :nd => 5, :lovary => 0:9) with Enzyme.Compiler.EnzymeRuntimeActivityError(Cstring(0x00007cf49f5363e0))
+sum + rest foreach primal: 0.089786 seconds (158.13 k allocations: 8.158 MiB, 99.74% compilation time)
+sum + rest foreach, gradient failed for Base.Pairs{Symbol, Any, NTuple{6, Symbol}, @NamedTuple{seed::Int64, lnn::Int64, nk::Int64, nbs::Int64, nd::Int64, lovary::UnitRange{Int64}}}(:seed => 123, :lnn => 3, :nk => 20, :nbs => 5, :nd => 5, :lovary => 0:9) with Enzyme.Compiler.EnzymeRuntimeActivityError(Cstring(0x00007cf49f54c29c))

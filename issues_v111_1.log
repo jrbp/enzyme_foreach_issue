@@ -1,9 +1,0 @@
-simple run  for    : 0.000000 seconds
-simple run  for    : 0.000000 seconds
-simple run  foreach: 0.000003 seconds (21 allocations: 336 bytes)
-simple run  foreach: 0.000001 seconds (21 allocations: 336 bytes)
-simple grad for    : 0.000001 seconds
-simple grad for    : 0.000000 seconds
-simple grad foreach: 0.118769 seconds (130.66 k allocations: 6.453 MiB, 99.88% compilation time)
-simple grad foreach: 0.000021 seconds (98 allocations: 4.656 KiB)
-End simple cases

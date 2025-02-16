@@ -1,0 +1,83 @@
+simple run  for    : 0.000001 seconds
+simple run  for    : 0.000000 seconds
+simple run  foreach: 0.000004 seconds (21 allocations: 336 bytes)
+simple run  foreach: 0.000001 seconds (21 allocations: 336 bytes)
+simple grad for    : 0.000000 seconds
+simple grad for    : 0.000000 seconds
+simple grad foreach: 0.137820 seconds (130.66 k allocations: 6.453 MiB, 99.89% compilation time)
+simple grad foreach: 0.000028 seconds (98 allocations: 4.656 KiB)
+End simple cases
+2
+5
+8
+11
+14
+17
+Project enzyme_test v0.1.0
+Status `~/git/temp/enzyme_foreach/Project.toml`
+  [b0b7db55] ComponentArrays v0.15.24
+  [7da242da] Enzyme v0.13.30
+  [37e2e46d] LinearAlgebra v1.11.0
+  [9a3f8284] Random v1.11.0
+nothing
+for, primal run
+  0.000196 seconds (241 allocations: 10.641 KiB)
+  0.000741 seconds (241 allocations: 10.641 KiB)
+  0.000923 seconds (241 allocations: 10.641 KiB)
+  0.001724 seconds (241 allocations: 10.641 KiB)
+  0.002830 seconds (241 allocations: 10.641 KiB)
+  0.004529 seconds (241 allocations: 10.641 KiB)
+foreach, primal run
+  0.000125 seconds (40 allocations: 960 bytes)
+  0.000439 seconds (40 allocations: 960 bytes)
+  0.001073 seconds (40 allocations: 960 bytes)
+  0.002189 seconds (40 allocations: 960 bytes)
+  0.003885 seconds (40 allocations: 960 bytes)
+  0.006065 seconds (40 allocations: 960 bytes)
+
+for, grad run
+  0.005640 seconds (6.69 k allocations: 742.781 KiB)
+  0.008411 seconds (10.41 k allocations: 1.406 MiB)
+  0.025959 seconds (14.01 k allocations: 2.329 MiB)
+  0.034969 seconds (17.61 k allocations: 3.499 MiB)
+  0.044471 seconds (21.21 k allocations: 4.927 MiB)
+  0.062457 seconds (24.83 k allocations: 6.593 MiB)
+foreach, grad run
+  0.006422 seconds (29.77 k allocations: 2.357 MiB)
+  0.014187 seconds (47.67 k allocations: 5.964 MiB)
+  0.024807 seconds (67.37 k allocations: 12.476 MiB)
+  0.041655 seconds (89.27 k allocations: 21.849 MiB)
+  0.068943 seconds (114.77 k allocations: 36.256 MiB)
+  0.157123 seconds (143.69 k allocations: 57.133 MiB, 27.30% gc time)
+
+for, primal comp
+  2.739887 seconds (5.51 M allocations: 280.506 MiB, 1.50% gc time, 99.89% compilation time)
+  1.069595 seconds (1.64 M allocations: 82.866 MiB, 3.59% gc time, 99.80% compilation time)
+  0.934515 seconds (1.64 M allocations: 82.852 MiB, 99.72% compilation time)
+  0.905449 seconds (1.64 M allocations: 82.870 MiB, 99.64% compilation time)
+  0.991306 seconds (1.64 M allocations: 82.883 MiB, 4.11% gc time, 99.54% compilation time)
+  0.921549 seconds (1.64 M allocations: 82.896 MiB, 99.33% compilation time)
+foreach, primal comp
+  1.160524 seconds (4.84 M allocations: 247.883 MiB, 3.32% gc time, 99.94% compilation time)
+  0.477229 seconds (1.59 M allocations: 81.113 MiB, 6.85% gc time, 99.80% compilation time)
+  0.452313 seconds (1.59 M allocations: 81.114 MiB, 99.64% compilation time)
+  0.457434 seconds (1.59 M allocations: 81.120 MiB, 99.39% compilation time)
+  0.445173 seconds (1.59 M allocations: 81.126 MiB, 99.02% compilation time)
+  0.504434 seconds (1.59 M allocations: 81.116 MiB, 9.58% gc time, 98.67% compilation time)
+
+note: first gradient comp always takes longer
+for, grad comp
+ 38.035089 seconds (60.86 M allocations: 2.796 GiB, 1.82% gc time, 99.95% compilation time)
+ 12.607285 seconds (17.29 M allocations: 789.402 MiB, 1.09% gc time, 99.88% compilation time)
+ 12.377348 seconds (17.30 M allocations: 790.447 MiB, 1.11% gc time, 99.82% compilation time)
+ 12.697519 seconds (17.30 M allocations: 791.620 MiB, 1.06% gc time, 99.67% compilation time)
+ 12.809720 seconds (17.30 M allocations: 793.272 MiB, 0.99% gc time, 99.54% compilation time)
+ 12.371567 seconds (17.31 M allocations: 794.726 MiB, 0.96% gc time, 99.32% compilation time)
+foreach, grad comp
+ 64.568373 seconds (73.67 M allocations: 3.205 GiB, 1.45% gc time, 99.98% compilation time)
+ 58.983441 seconds (49.80 M allocations: 1.993 GiB, 1.35% gc time, 99.97% compilation time)
+ 56.942318 seconds (49.85 M allocations: 2.000 GiB, 0.94% gc time, 99.95% compilation time)
+ 58.860566 seconds (49.89 M allocations: 2.010 GiB, 0.99% gc time, 99.92% compilation time)
+ 58.767354 seconds (49.90 M allocations: 2.024 GiB, 1.05% gc time, 99.87% compilation time)
+ 56.350430 seconds (49.94 M allocations: 2.044 GiB, 0.53% gc time, 99.74% compilation time)
+

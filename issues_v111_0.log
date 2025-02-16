@@ -1,0 +1,4 @@
+simple run  for    : 0.000000 seconds
+simple run  for    : 0.000000 seconds
+simple run  foreach: 0.000002 seconds (21 allocations: 336 bytes)
+simple run  foreach: 0.000001 seconds (21 allocations: 336 bytes)

@@ -1,0 +1,30 @@
+ERROR: LoadError: MethodError: Cannot `convert` an object of type 
+  NamedTuple{(:value, :time, :bytes, :gctime, :gcstats, :lock_conflicts, :compile_time, :recompile_time),Tuple{Float64,Float64,Int64,Float64,Base.GC_Diff,Int64,Float64,Float64}} to an object of type 
+  NamedTuple{(:value, :time, :bytes, :gctime, :gcstats),Tuple{Float64,Float64,Int64,Float64,Base.GC_Diff}}
+The function `convert` exists, but no method is defined for this combination of argument types.
+
+Closest candidates are:
+  convert(::Type{NT}, ::NamedTuple{names}) where {names, NT<:(NamedTuple{names})}
+   @ Base namedtuple.jl:188
+  NamedTuple{names, T}(::NamedTuple) where {names, T<:Tuple}
+   @ Base namedtuple.jl:124
+  NamedTuple{names, T}(::Any) where {names, T<:Tuple}
+   @ Base namedtuple.jl:148
+  ...
+
+Stacktrace:
+ [1] push!(a::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, item::@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff, lock_conflicts::Int64, compile_time::Float64, recompile_time::Float64})
+   @ Base ./array.jl:1260
+ [2] run_them!(time_dat::@NamedTuple{foreach_times::@NamedTuple{primal::@NamedTuple{comp::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}, grad::@NamedTuple{comp::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}}, for_times::@NamedTuple{primal::@NamedTuple{comp::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}, grad::@NamedTuple{comp::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}}}; kwargs::@Kwargs{seed::Int64, lnn::Int64, nk::Int64, nbs::Int64, nd::Int64, lovary::UnitRange{Int64}})
+   @ Main ~/git/temp/enzyme_foreach/src/enzyme_test.jl:272
+ [3] (::var"#30#31"{@NamedTuple{foreach_times::@NamedTuple{primal::@NamedTuple{comp::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}, grad::@NamedTuple{comp::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}}, for_times::@NamedTuple{primal::@NamedTuple{comp::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Float64, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}, grad::@NamedTuple{comp::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}, run::Vector{@NamedTuple{value::Nothing, time::Float64, bytes::Int64, gctime::Float64, gcstats::Base.GC_Diff}}}}}})(lnn::Int64)
+   @ Main ~/git/temp/enzyme_foreach/src/enzyme_test.jl:384
+ [4] foreach
+   @ ./abstractarray.jl:3187 [inlined]
+ [5] main(lnns::StepRange{Int64, Int64})
+   @ Main ~/git/temp/enzyme_foreach/src/enzyme_test.jl:383
+ [6] main()
+   @ Main ~/git/temp/enzyme_foreach/src/enzyme_test.jl:369
+ [7] top-level scope
+   @ ~/git/temp/enzyme_foreach/src/enzyme_test.jl:390
+in expression starting at /home/jrb26/git/temp/enzyme_foreach/src/enzyme_test.jl:390
